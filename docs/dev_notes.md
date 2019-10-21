@@ -19,7 +19,7 @@ Once you've downloaded your wheel, navigate to where the wheel file exists (or m
 
 **TODO List**
 
- - Change file paths to use proper slashes regardless of OS using `Path` from `pathlib` (available in Python 3.4)
+ - <del>Change file paths to use proper slashes regardless of OS using `Path` from `pathlib` (available in Python 3.4)</del>
  
  - Change `fetch_data` to pull sets/card images in parallel for huge speed increase (`main`)
 
@@ -34,7 +34,7 @@ Once you've downloaded your wheel, navigate to where the wheel file exists (or m
 
  - Change `fetch_all_cards_image` to use `itertuples` instead of `iterrows` for speed increase
 
- - Remove old "dark net" functionality to simplify code base
+ - <del>Remove old "dark net" functionality to simplify code base</del>
 
 **October 15th**
 - Create repository, shift docs around, created todo list
@@ -45,3 +45,5 @@ Once you've downloaded your wheel, navigate to where the wheel file exists (or m
 
 **October 20th**
 - Update paths to use Path objects instead of path strings and `os` library
+- Removed old neural net files
+- Parallelized pulling of images (one set at a time)
