@@ -15,11 +15,15 @@ Once you've downloaded your wheel, navigate to where the wheel file exists (or m
 
 <del>3 - In addition to openCV (at least on windows) you also need to install `opencv-contrib-python` because the opencv-python package was not built with full support</del> package added to `requirements.txt`
 
+4 - When running from Visual Studio Code with the Python extension, `fetch_data` throws an exception when the program exits. I'm not sure why..it runs fine from the command line.
+
 **TODO List**
 
  - Change file paths to use proper slashes regardless of OS using `Path` from `pathlib` (available in Python 3.4)
  
- - Change `fetch_data` to pull sets/card images in parallel for huge speed increase
+ - Change `fetch_data` to pull sets/card images in parallel for huge speed increase (`main`)
+
+ - <del>Change `fetch_all_cards_image` to pull card images in parallel</del>
 
  - Change detection alg to save a card image from a frame once we're confident we've found a card. (Assumption: One card per frame)
     - This will allow us to just take a card image and stash it away for processing and increase the rate we can pump cards through 
