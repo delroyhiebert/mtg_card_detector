@@ -69,9 +69,9 @@ def get_valid_filename(s):
 def fetch_all_cards_image(df, out_dir=None, size='png'):
     """
     Download card images from Scryfall database
-    :param df: pandas dataframe (or series) of cards
-    :param out_dir: path of output directory
-    :param size: Image format given by Scryfall API - 'png', 'large', 'normal', 'small', 'art_crop', 'border_crop'
+    :param df (DataFrame): pandas dataframe (or series) of cards
+    :param out_dir (Path): path of output directory
+    :param size (string): Image format given by Scryfall API - 'png', 'large', 'normal', 'small', 'art_crop', 'border_crop'
     :return:
     """
     if size != 'png':
@@ -82,6 +82,7 @@ def fetch_all_cards_image(df, out_dir=None, size='png'):
         fetch_card_image(df, out_dir, size)
     else:
         # df is a dataframe containing list of cards
+        # todo: change this to itertuples for speed increase
         for ind, row in df.iterrows():
             fetch_card_image(row, out_dir, size)
 
@@ -89,15 +90,16 @@ def fetch_all_cards_image(df, out_dir=None, size='png'):
 def fetch_card_image(row, out_dir=None, size='png'):
     """
     Download a card's image from Scryfall database
-    :param row: pandas series including the card's information
-    :param out_dir: path of the output directory
-    :param size: Image format given by Scryfall API - 'png', 'large', 'normal', 'small', 'art_crop', 'border_crop'
+    :param row (Series): pandas series including the card's information
+    :param out_dir (Path): path of the output directory
+    :param size (string): Image format given by Scryfall API - 'png', 'large', 'normal', 'small', 'art_crop', 'border_crop'
     :return:
     """
     if out_dir is None:
-        out_dir = '%s/card_img/%s/%s' % (Config.data_dir, size, row['set'])
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+        #out_dir = '%s\card_img\%s\%s' % (Config.data_dir, size, row['set'])
+        out_dir = Config.data_dir / 'card_img' / size / row['set']
+    if not out_dir.is_dir():
+        out_dir.mkdir(parents=True)
 
     # Extract card's name and URL for image accordingly
     # Double-faced cards have a different format, and results in two separate card images
@@ -119,8 +121,10 @@ def fetch_card_image(row, out_dir=None, size='png'):
         card_names.append(get_valid_filename(row['name']))
 
     for i in range(len(png_urls)):
-        img_name = '%s/%s_%s.png' % (out_dir, row['collector_number'], card_names[i])
-        if not os.path.isfile(img_name):
+        #img_name = '%s\%s_%s.png' % (out_dir, row['collector_number'], card_names[i])
+        collector_num = row['collector_number']
+        img_name = out_dir / f'{collector_num}_{card_names[i]}.png'
+        if not os.path.isfile(img_name.resolve()):
             request.urlretrieve(png_urls[i], filename=img_name)
             print(img_name)
 
@@ -128,7 +132,8 @@ def fetch_card_image(row, out_dir=None, size='png'):
 def main():
     # Query card data by each set, then merge them together
     for set_name in Config.all_set_list:
-        csv_name = '%s/csv/%s.csv' % (Config.data_dir, set_name)
+        #csv_name = '%s\csv\%s.csv' % (Config.data_dir, set_name)
+        csv_name = Config.data_dir / 'csv' / f'{set_name}.csv'
         print(csv_name)
         if not os.path.isfile(csv_name):
             df = fetch_all_cards_text(url='https://api.scryfall.com/cards/search?q=set:%s+lang:en' % set_name,
@@ -136,7 +141,8 @@ def main():
         else:
             df = load_all_cards_text(csv_name)
         df.sort_values('collector_number')
-        fetch_all_cards_image(df, out_dir='%s/card_img/png/%s' % (Config.data_dir, set_name))
+
+        fetch_all_cards_image(df, out_dir=Config.data_dir / 'card_img' / 'png' / set_name)
 
     #df = fetch_all_cards_text(url='https://api.scryfall.com/cards/search?q=layout:normal+lang:en+frame:2003',
     #                          csv_name='%s/csv/all.csv' % Config.data_dir)
