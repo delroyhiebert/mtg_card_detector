@@ -3,6 +3,10 @@
 *.csv
 *.out
 *.so
+
+data/
+output/
+
 mnist/
 caffe/
 grasp/
