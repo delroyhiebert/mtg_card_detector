@@ -7,6 +7,9 @@
 data/
 output/
 
+card_pool.pck
+.vscode/
+
 mnist/
 caffe/
 grasp/
@@ -34,3 +37,4 @@ CMakeLists.txt
 
 .idea/
 __pycache__/
+.vscode/launch.json
