@@ -9,6 +9,7 @@ import os
 import pandas as pd
 from PIL import Image
 import time
+from pathlib import Path
 
 from config import Config
 import fetch_data
@@ -61,8 +62,8 @@ def calc_image_hashes(card_pool, save_to=None, hash_size=None):
             # Fetch the image - name can be found based on the card's information
             card_info['name'] = card_name
             img_name = '%s/card_img/png/%s/%s_%s.png' % (Config.data_dir, card_info['set'],
-                                                         card_info['collector_number'],
-                                                         fetch_data.get_valid_filename(card_info['name']))
+                                                            card_info['collector_number'],
+                                                            fetch_data.get_valid_filename(card_info['name']))
             card_img = cv2.imread(img_name)
 
             # If the image doesn't exist, download it from the URL
@@ -81,8 +82,7 @@ def calc_image_hashes(card_pool, save_to=None, hash_size=None):
                 card_info['card_hash_%d' % hs] = card_hash
                 #art_hash = ih.phash(img_art, hash_size=hs)
                 #card_info['art_hash_%d' % hs] = art_hash
-            new_pool.loc[0 if new_pool.empty else new_pool.index.max() + 1] = card_info
-
+            new_pool = new_pool.append(card_info)
     if save_to is not None:
         new_pool.to_pickle(save_to)
     return new_pool
@@ -217,7 +217,7 @@ def find_card(img, thresh_c=5, kernel_size=(3, 3), size_thresh=10000):
     img_erode = cv2.erode(img_dilate, kernel, iterations=1)
 
     # Find the contour
-    _, cnts, hier = cv2.findContours(img_erode, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts, hier = cv2.findContours(img_erode, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(cnts) == 0:
         #print('no contours')
         return []
@@ -476,14 +476,15 @@ def main(args):
         # Merge database for all cards, then calculate pHash values of each, store them
         df_list = []
         for set_name in Config.all_set_list:
-            csv_name = '%s/csv/%s.csv' % (Config.data_dir, set_name)
-            df = fetch_data.load_all_cards_text(csv_name)
+            csv_name = Config.data_dir / 'csv' / f'{set_name}.csv'
+            df = fetch_data.load_all_cards_text(csv_name.resolve())
             df_list.append(df)
         card_pool = pd.concat(df_list, sort=True)
         card_pool.reset_index(drop=True, inplace=True)
         card_pool.drop('Unnamed: 0', axis=1, inplace=True, errors='ignore')
-        calc_image_hashes(card_pool, save_to=pck_path)
-    ch_key = 'card_hash_%d' % args.hash_size
+        #BUGFIX: reassign card pool, otherwise then this runs card_pool doesn't have card_hash column
+        card_pool = calc_image_hashes(card_pool, save_to=pck_path)
+    ch_key = f'card_hash_{args.hash_size}'
     card_pool = card_pool[['name', 'set', 'collector_number', ch_key]]
 
     # Processing time is almost linear to the size of the database
@@ -496,8 +497,8 @@ def main(args):
 
     # If the test file isn't given, use webcam to capture video
     if args.in_path is None:
-        capture = cv2.VideoCapture(0)
-        detect_video(capture, card_pool, hash_size=args.hash_size, out_path='%s/result.avi' % args.out_path,
+        capture = cv2.VideoCapture('http://192.168.0.12:8080/video')
+        detect_video(capture, card_pool, hash_size=args.hash_size, out_path=Path(args.out_path) / 'result.avi',
                      display=args.display, show_graph=args.show_graph, debug=args.debug)
         capture.release()
     else:
@@ -520,7 +521,7 @@ def main(args):
                          debug=args.debug)
         else:
             # Test file is a video
-            capture = cv2.VideoCapture(args.in_path)
+            capture = cv2.VideoCapture('http://192.168.0.12:8080/video')
             detect_video(capture, card_pool, hash_size=args.hash_size, out_path=out_path, display=args.display,
                          show_graph=args.show_graph, debug=args.debug)
             capture.release()
