@@ -4,6 +4,10 @@ import pandas as pd
 import re
 from urllib import request, error
 import concurrent.futures
+import asyncio
+from multiprocessing import Pool, Process
+import multiprocessing
+import threading
 
 from config import Config
 
@@ -74,6 +78,7 @@ def fetch_all_cards_image(df, out_dir=None, size='png'):
     :param size (string): Image format given by Scryfall API - 'png', 'large', 'normal', 'small', 'art_crop', 'border_crop'
     :return:
     """
+    pass
     if size != 'png':
         print('Note: this repo has been implemented using only \'png\' size. '
               'Using %s may result in an unexpected behaviour in other parts of this repo.' % size)
@@ -86,13 +91,14 @@ def fetch_all_cards_image(df, out_dir=None, size='png'):
 
         # df is a dataframe containing list of cards
         # todo: change this to itertuples for speed increase
-        with concurrent.futures.ProcessPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
             arg1 = [row for ind, row in df.iterrows()]
             arg2 = [out_dir] * len(arg1)
             arg3 = [size] * len(arg1)
             #TODO: Make this loop nicer
             for data in executor.map(fetch_card_image, arg1, arg2, arg3):
                 pass
+    del df
 
 def fetch_card_image(row, out_dir=None, size='png'):
     """
@@ -129,22 +135,39 @@ def fetch_card_image(row, out_dir=None, size='png'):
             request.urlretrieve(png_urls[i], filename=img_name)
             print(img_name)
 
+#def fetch_set_metadata(set_name):
+    
+
+def get_data_for_set(set_name, q):
+    csv_name = Config.data_dir / 'csv' / f'{set_name}.csv'
+    print(csv_name)
+    if not csv_name.is_file():
+        df = fetch_all_cards_text(url='https://api.scryfall.com/cards/search?q=set:%s+lang:en' % set_name,
+                                    csv_name=csv_name)
+    else:
+        df = load_all_cards_text(csv_name)
+    df.sort_values('collector_number')
+    q.put((Config.data_dir / 'card_img' / 'png' / set_name, df))
+    #fetch_all_cards_image(df, out_dir=Config.data_dir / 'card_img' / 'png' / set_name)
 
 def main():
-    # Query card data by each set, then merge them together
     #TODO: Parallelize this
+    q = multiprocessing.Queue()
+    tasks = []
     for set_name in Config.all_set_list:
-        #csv_name = '%s\csv\%s.csv' % (Config.data_dir, set_name)
-        csv_name = Config.data_dir / 'csv' / f'{set_name}.csv'
-        print(csv_name)
-        if not csv_name.is_file():
-            df = fetch_all_cards_text(url='https://api.scryfall.com/cards/search?q=set:%s+lang:en' % set_name,
-                                      csv_name=csv_name)
-        else:
-            df = load_all_cards_text(csv_name)
-        df.sort_values('collector_number')
+        p = Process(target=get_data_for_set, args=(set_name,q,))
+        tasks.append(p)
+        p.start()
 
-        fetch_all_cards_image(df, out_dir=Config.data_dir / 'card_img' / 'png' / set_name)
+    for set_name in Config.all_set_list:
+        data=q.get()
+        p = Process(target=fetch_all_cards_image, args=(data[1], data[0]))
+        tasks.append(p)
+        p.start()
+
+    for t in tasks:
+        t.join()
+
     return
 
 if __name__ == '__main__':
